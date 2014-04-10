@@ -1,0 +1,99 @@
+\documentclass{article}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{float}
+\usepackage{fullpage}
+\graphicspath{ {/Users/patdbarry/Documents/LaTex" "Documents/LaTex" "Images/FISH641/} }
+
+\begin{document}
+
+\title{Bayesian Homework}
+\author{Patrick Barry}
+
+\maketitle
+
+\section{Question}
+It's time for you (in groups as desired, of course) to build a Bayesian analysis from scratch. I've included 50 years of spawner-recruit data (BH.csv). If you look at it carefully, you'll see it?s obviously fake. It was built with a Beverton-Holt model, log-normal process error, and autocorrelation in the process error. The equation was:
+
+\begin{equation}
+   R_t = \frac{a*S_t}{1+\frac{a*S_t}{b}}  exp(u_t)
+   \quad\text{where}\quad
+   u_t = \varepsilon_t + \phi*\varepsilon_{t-1}
+   \quad\text{and}\quad
+   \varepsilon_t \sim N(0,\sigma^2)
+\end{equation}
+
+
+\section{Approach}
+We will inevitably want to estimate the parameters a, b and $\sigma$ using a Bayesian approach. Because we do not have conditional dependencies (think Gibbs sampling) this appears to be a problem with which we can use a simple Markov Chain Monte Carlo. We will have to construct a jumping distribution and make sure that each parameter is mixing well by looking at the trace plots. But first we can use a least squares approach to estimate the parameters a and b.
+
+\subsection{Non-linear least squares}
+Luckily in R there is a package designed for this (using the nls function). Milo also suggested the optima() function. Using the spawner recruit data that was simulated we can visualize the 'best-fit' curve to the data (Fig.1). We can see from these data that they don't have the normal variation that one would expect from actual S-R data. The nls fit is pretty good, with a few recruitments at mid-levels of spawners being underestimated. It almost appears that a stronger bell curve might do a better job of describing the data, but that curve would need to be a polynomial to go through (0,0). Estimates of the a and b parameters were 2.098 and 16,984.207 respectively. 
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=3.0in]{BH.jpg}
+    \caption{nls model fit}
+    \label{Fig.1}
+\end{figure}
+
+\subsection{Bayesian Sampling}
+In order to sample from the posterior we need to do two things. First, we need to develop a likelihood equation and then think about how best to frame our prior distributions on the parameters. We know that the error of the recruits are log-normally distributed. So if we transform our recruits to ln(recruits) we can use a normal distribution for the error on recruitment for the likelihood. Our likelihood function would thus be
+
+\begin{equation}
+ \ln{\cal L} = \sum\limits_{i=1}^n - \frac{1}{2}\left(\ln(2\pi\sigma^2)+\frac{{(ln{R_i}-ln{\frac{aS_i}{1+\frac{aS_i}{b}}}+\phi(ln{R_{i-1}}-ln{\frac{aS_{i-1}}{1+\frac{aS_{i-1}}{b}}}}))^2}{\sigma^2}\right)
+   \end{equation}
+
+Where the AR(1) term is made up of $\phi$ multiplied by the previous years residual. This basically modifies the mean in the current year for the residual without chaining the standard deviation.
+Now we need to think about the priors on each parameter. The parameters that we have to deal with are a, b, $\sigma$, and $\phi$ as well as the residual from the year before our time series starts ($\tau$ let's call it). We can put a uniform prior on a \~ U(0,10). Similarly we can put a uniform on b\~U(0,MaxRecruits) and $\phi$ \~ U(-1,1). The residual we can't observe should be normally distributed, so $\tau$\~N(0,$\sigma^2$. I did some playing around with choices of parameters. I tried a diffuse gamma distribution on b, but it didn't not seem to help with mixing much. 
+The full generic Bayesian model is 
+
+\begin{equation*}
+P(a,b,\sigma,\phi,\tau\vert spawners, recruits) = P(a)P(b)P(\sigma)P(\phi) P(\tau)P( spawners, recruits\vert a,b,\sigma,\phi,\tau)
+   \end{equation*}
+
+\begin{equation*}
+= ln\frac{1}{10}+ln\frac{1}{25720}+ln\frac{1}{\sigma^2}+ln\frac{1}{2}+ln\frac{1}{\tau} + \sum\limits_{i=1}^n - \frac{1}{2}\left(\ln(2\pi\sigma^2)+\frac{{(ln{R_i}-ln{\frac{aS_i}{1+\frac{aS_i}{b}}}+\phi(ln{R_{i-1}}-ln{\frac{aS_{i-1}}{1+\frac{aS_{i-1}}{b}}}}))^2}{\sigma^2}\right)
+   \end{equation*}
+   
+Now that we have that all set up we should be able to sample from the posterior pretty easily using a Markov Chain Monte Carlo. We will use the MCMCpack functions in R instead of writing our own. It would be somewhat trivial to create a proposal set up and then calculate the Hastings ratio, but let's use what we have. There are some useful functions in the MCMC routine that help the jumping distribution get to a reasonable acceptance rate. I think it shoots for \~25\%. The first and second chain produced similar estimates (chain one results are shown in the table. 
+
+\begin{center}
+    \begin{tabular}{c c c c c}
+    \hline
+    $\theta$ & Mean & Standard Dev & 2.5\% & 95\% \\ \hline
+    a & 2.093 & 0.6628 & 1.4436  & 3.934\\     b & 24780 & 9531 & 8596.5432 & 39230\\ $\sigma$ &0.5973 & 0.06117 &0.4889     & 0.7324\\ 
+$\phi$ &-0.04851 & 0.5545 &-0.9577    & 0.9150\\ $\tau$ & 0.007654 & 0.05558 &-1.0663    & 1.098\\ 
+    \hline
+    \end{tabular}
+\end{center}
+
+As we can see from the trace plots below, parameter b does not mix particularly well. I played with the jumping distribution a bunch and finally got two chains to converge, but the mixing of the b parameter leaves a lot wanting. 
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=3.0in]{Trace1.jpg}
+    \caption{Trace plot of parameters a, b, and $\sigma$}
+    \label{Fig.2}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=3.0in]{Trace2.jpg}
+    \caption{Trace plot of parameters $\phi$ and $\tau$}
+    \label{Fig.3}
+\end{figure}
+
+Convergence was checked both by looking at the trace plots of the two chains run as well as the Gelman-Rubin statistic. The point estimate of the potential scale reduction factors were all less than 1.02. Visually, I would say that the b parameter is not converging, but the Gelman-Rubin statistic suggests that the between chain variance is not that much different from the within chain variance. Here I would argue that they have so much variance that you shouldn't get a significant statistic. 
+
+\section{Conclusion}
+We can see how individual draws from the Markov Chain do in explaining our data. I pulled a few combination from the MCMC run at random and plotted them agains the nls model that was done first. The crosses are the nls model and the other curves are those from the Bayesian approach. The only line that looks pretty bad is the black one. 
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=3.0in]{Compare.jpg}
+    \caption{Beverton Holt Model Fit. Crosses are nls model, others are Bayesian}
+    \label{Fig.3}
+\end{figure}
+
+\end{document}
