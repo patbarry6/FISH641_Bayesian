@@ -8,12 +8,12 @@
 \begin{document}
 
 \title{Bayesian Homework}
-\author{Patrick Barry}
+\author{Patrick Dylan Barry}
 
 \maketitle
 
 \section{Question}
-It's time for you (in groups as desired, of course) to build a Bayesian analysis from scratch. I've included 50 years of spawner-recruit data (BH.csv). If you look at it carefully, you'll see it?s obviously fake. It was built with a Beverton-Holt model, log-normal process error, and autocorrelation in the process error. The equation was:
+It's time for you (in groups as desired, of course) to build a Bayesian analysis from scratch. I've included 50 years of spawner-recruit data (BH.csv). If you look at it carefully, you'll see it's obviously fake. It was built with a Beverton-Holt model, log-normal process error, and autocorrelation in the process error. The equation was:
 
 \begin{equation}
    R_t = \frac{a*S_t}{1+\frac{a*S_t}{b}}  exp(u_t)
@@ -25,7 +25,7 @@ It's time for you (in groups as desired, of course) to build a Bayesian analysis
 
 
 \section{Approach}
-We will inevitably want to estimate the parameters a, b and $\sigma$ using a Bayesian approach. Because we do not have conditional dependencies (think Gibbs sampling) this appears to be a problem with which we can use a simple Markov Chain Monte Carlo. We will have to construct a jumping distribution and make sure that each parameter is mixing well by looking at the trace plots. But first we can use a least squares approach to estimate the parameters a and b.
+Inevitably we will want to estimate the parameters a, b and $\sigma$ using a Bayesian approach. Because we do not have conditional dependencies (think Gibbs sampling) this appears to be a problem with which we can use a simple Markov Chain Monte Carlo. We will have to construct a jumping distribution and make sure that each parameter is mixing well by looking at the trace plots. But first we can use a least squares approach to estimate the parameters a and b.
 
 \subsection{Non-linear least squares}
 Luckily in R there is a package designed for this (using the nls function). Milo also suggested the optima() function. Using the spawner recruit data that was simulated we can visualize the 'best-fit' curve to the data (Fig.1). We can see from these data that they don't have the normal variation that one would expect from actual S-R data. The nls fit is pretty good, with a few recruitments at mid-levels of spawners being underestimated. It almost appears that a stronger bell curve might do a better job of describing the data, but that curve would need to be a polynomial to go through (0,0). Estimates of the a and b parameters were 2.098 and 16,984.207 respectively. 
@@ -62,8 +62,11 @@ Now that we have that all set up we should be able to sample from the posterior 
     \begin{tabular}{c c c c c}
     \hline
     $\theta$ & Mean & Standard Dev & 2.5\% & 95\% \\ \hline
-    a & 2.093 & 0.6628 & 1.4436  & 3.934\\     b & 24780 & 9531 & 8596.5432 & 39230\\ $\sigma$ &0.5973 & 0.06117 &0.4889     & 0.7324\\ 
-$\phi$ &-0.04851 & 0.5545 &-0.9577    & 0.9150\\ $\tau$ & 0.007654 & 0.05558 &-1.0663    & 1.098\\ 
+    a & 2.093 & 0.6628 & 1.4436  & 3.934\\ 
+    b & 24780 & 9531 & 8596.5432 & 39230\\ 
+$\sigma$ &0.5973 & 0.06117 &0.4889     & 0.7324\\ 
+$\phi$ &-0.04851 & 0.5545 &-0.9577    & 0.9150\\ 
+$\tau$ & 0.007654 & 0.05558 &-1.0663    & 1.098\\ 
     \hline
     \end{tabular}
 \end{center}
@@ -94,6 +97,9 @@ We can see how individual draws from the Markov Chain do in explaining our data.
     \includegraphics[width=3.0in]{Compare.jpg}
     \caption{Beverton Holt Model Fit. Crosses are nls model, others are Bayesian}
     \label{Fig.3}
+    
+Today in lab we looked at how the Beverton-Holt model may be particularly difficult to sample from. This is due to the fact that it is rather "Banana-shaped" and that walking from one side of the high parameter space for parameters a and b might be inefficient. It is possible if you run a long chain with a large variance for the jumping distribution. However, Milo could not get WinBUGs to work at all, despite different parameterizations. It may be important to understand what is meant by 'slicing' in WinBUGs. 
+
 \end{figure}
 
 \end{document}
